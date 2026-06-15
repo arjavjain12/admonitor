@@ -1,5 +1,9 @@
 import nodemailer from 'nodemailer';
+import { readFileSync, existsSync } from 'fs';
+import { fileURLToPath } from 'url';
+import path from 'path';
 
+const PUBLIC = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'public');
 const { SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, ALERT_TO, ALERT_FROM } = process.env;
 const enabled = SMTP_HOST && SMTP_USER && SMTP_PASS && ALERT_TO;
 
@@ -47,32 +51,41 @@ function adBlock(ad, badge) {
   </div>`;
 }
 
-async function send(subject, html, ads) {
+async function videoFor(ad) {
+  // prefer the archived local copy (permanent); fall back to the fresh signed URL
+  if (ad.creative_path) {
+    const f = path.join(PUBLIC, ad.creative_path.replace(/^\//, ''));
+    if (existsSync(f)) return readFileSync(f);
+  }
+  return ad.video_url ? fetchVideo(ad.video_url) : null;
+}
+
+async function send(subject, html, ads, attachVideos = true) {
   if (!enabled) { console.log(`[notify] SMTP disabled — would send: ${subject}`); return; }
   const attachments = [];
-  for (const ad of ads) {
-    if (ad.video_url) {
-      const buf = await fetchVideo(ad.video_url);
-      if (buf) attachments.push({ filename: `${ad.library_id}.mp4`, content: buf });
-    }
+  if (attachVideos) for (const ad of ads) {
+    const buf = await videoFor(ad);
+    if (buf) attachments.push({ filename: `${ad.library_id}.mp4`, content: buf });
   }
   await tx.sendMail({ from: ALERT_FROM || SMTP_USER, to: ALERT_TO, subject, html, attachments });
   console.log(`[notify] sent "${subject}" with ${attachments.length} video(s)`);
 }
 
+// New ad: lightweight — caption hook + Meta link, NO video.
 export function sendNewAd(comp, ad) {
   return send(`🆕 New ${comp.name} ad — "${(ad.analysis?.hook || ad.body || '').slice(0, 60)}"`,
-    `<h2>🆕 ${comp.name} just launched a new ad</h2>${adBlock(ad, '🆕 NEW AD')}`, [ad]);
+    `<h2>🆕 ${comp.name} just launched a new ad</h2>${adBlock(ad, '🆕 NEW AD')}`, [ad], false);
 }
 
-export function send7Day(comp, ad) {
-  return send(`🔥 ${comp.name} ad now proven (7+ days live)`,
-    `<h2>🔥 This ${comp.name} ad has run 7+ days — it's working</h2>${adBlock(ad, '🔥 PROVEN — 7+ DAYS LIVE')}`, [ad]);
+// Crossed 8 days → graduating to scaling. Full package: hook + script + archived video.
+export function sendScaling(comp, ad) {
+  return send(`🔥 ${comp.name} ad now scaling (8+ days live)`,
+    `<h2>🔥 This ${comp.name} ad crossed 8 days — it's working & scaling</h2>${adBlock(ad, '🔥 SCALING — 8+ DAYS LIVE')}`, [ad], true);
 }
 
 export function sendDigest(comp, winners) {
   if (!winners.length) return;
-  return send(`📊 ${comp.name} — top ${winners.length} performing ads today`,
+  return send(`📊 ${comp.name} — top ${winners.length} scaling/winning ads`,
     `<h2>📊 ${comp.name} — best performers (by longevity & variants)</h2>${winners.map(w => adBlock(w, '🏆 TOP PERFORMER')).join('')}`,
-    winners);
+    winners, true);
 }

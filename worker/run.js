@@ -1,19 +1,36 @@
-// Daily worker for GitHub Actions: scrape → diff → email new ads, 7-day milestones,
-// and a top-performers digest (hooks + scripts + videos). State persists in data/state.json.
+// Daily worker (GitHub Actions): scrape → diff → email new ads, scaling milestones (8d+),
+// and a top-performers digest. Hooks + archived videos only for scaling/winners. New ads: link only.
 import 'dotenv/config';
+import { writeFileSync, existsSync, mkdirSync } from 'fs';
+import { fileURLToPath } from 'url';
+import path from 'path';
 import { scrapeCompetitor, parseStarted } from '../src/scraper.js';
 import { analyzeVideoBuffer, SCRIPT_PROMPT } from '../src/video.js';
 import { loadAds, saveAds } from '../src/filestate.js';
-import { sendNewAd, send7Day, sendDigest } from '../src/notify.js';
-import { COMPETITORS, DIGEST_TOP_N, MAX_ANALYSES_PER_RUN, WINNER_DAYS } from '../src/config.js';
+import { sendNewAd, sendScaling, sendDigest } from '../src/notify.js';
+import { COMPETITORS, DIGEST_TOP_N, MAX_ANALYSES_PER_RUN, SCALING_DAYS, WINNER_DAYS } from '../src/config.js';
 
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const CREATIVE_DIR = path.join(__dirname, '..', 'public', 'creatives');
 const DAY = 86400000;
 const daysActive = (r, now) => Math.max(0, Math.round((now - (r.started_ts || r.first_seen)) / DAY));
+const isScaling = (r, now) => r.status === 'active' && (daysActive(r, now) >= SCALING_DAYS || r.variants >= 3);
 const score = (r, now) => daysActive(r, now) + (r.variants >= 3 ? 40 : 0) + r.variants * 5;
 
 async function fetchBuf(url) {
   try { const r = await fetch(url); if (!r.ok) return null; const b = Buffer.from(await r.arrayBuffer()); return b.length > 1000 ? b : null; }
   catch { return null; }
+}
+
+// Download a scaling/winner video so the dashboard has a permanent copy (Meta URLs expire).
+async function archiveVideo(rec) {
+  if (rec.media_type !== 'video' || !rec.video_url) return;
+  if (!existsSync(CREATIVE_DIR)) mkdirSync(CREATIVE_DIR, { recursive: true });
+  const file = path.join(CREATIVE_DIR, `${rec.library_id}.mp4`);
+  rec.creative_path = `/creatives/${rec.library_id}.mp4`;
+  if (existsSync(file)) return;                       // already archived
+  const buf = await fetchBuf(rec.video_url);
+  if (buf) writeFileSync(file, buf); else delete rec.creative_path;
 }
 
 async function ensureAnalysis(rec, budget) {
@@ -35,7 +52,7 @@ async function runCompetitor(comp, now, budget) {
   const state = await loadAds(comp);
   const firstRun = Object.keys(state).length === 0;
   const seenNow = new Set();
-  const newAds = [], milestones = [];
+  const newAds = [];
 
   for (const c of cards) {
     seenNow.add(c.id);
@@ -45,32 +62,32 @@ async function runCompetitor(comp, now, budget) {
         library_id: c.id, competitor: comp.name, media_type: c.media_type, body: c.body,
         started_on: c.started, started_ts: parseStarted(c.started), variants: c.variants,
         image_url: c.image_url, video_url: c.video_url, first_seen: now, last_seen: now,
-        status: 'active', alerted_new: firstRun, alerted_7day: false,
+        status: 'active', alerted_new: firstRun, alerted_scaling: false,
       };
       if (!firstRun) newAds.push(state[c.id]);
     } else {
       prev.last_seen = now; prev.status = 'active'; prev.variants = c.variants;
       prev.video_url = c.video_url; prev.image_url = c.image_url;
-      // backfill the start date if we missed it on an earlier run
       if (!prev.started_ts && c.started) { prev.started_on = c.started; prev.started_ts = parseStarted(c.started); }
     }
   }
   for (const id of Object.keys(state)) {
     if (!seenNow.has(id) && state[id].status === 'active') { state[id].status = 'inactive'; state[id].gone_at = now; }
   }
-  for (const r of Object.values(state)) {
-    if (r.status === 'active' && !r.alerted_7day && daysActive(r, now) >= WINNER_DAYS) milestones.push(r);
-  }
 
-  for (const r of [...newAds, ...milestones]) { r.daysActive = daysActive(r, now); await ensureAnalysis(r, budget); }
-  const winners = Object.values(state).filter(r => r.status === 'active')
-    .sort((a, b) => score(b, now) - score(a, now)).slice(0, DIGEST_TOP_N);
-  for (const w of winners) { w.daysActive = daysActive(w, now); await ensureAnalysis(w, budget); }
+  // Scaling/winners: analyze hook + archive video (cached, budget-capped). New ads get nothing heavy.
+  const scalingSet = Object.values(state).filter(r => isScaling(r, now)).sort((a, b) => score(b, now) - score(a, now));
+  for (const r of scalingSet) { r.daysActive = daysActive(r, now); await ensureAnalysis(r, budget); await archiveVideo(r); }
 
-  for (const ad of newAds) { await sendNewAd(comp, ad); ad.alerted_new = true; }
-  for (const ad of milestones) { await send7Day(comp, ad); ad.alerted_7day = true; }
+  // Just crossed the 8-day line → "now scaling" alert (once).
+  const milestones = scalingSet.filter(r => !r.alerted_scaling && daysActive(r, now) >= SCALING_DAYS);
+  const winners = scalingSet.slice(0, DIGEST_TOP_N);
+  for (const r of newAds) r.daysActive = daysActive(r, now);
+
+  for (const ad of newAds) { await sendNewAd(comp, ad); ad.alerted_new = true; }       // no video
+  for (const ad of milestones) { await sendScaling(comp, ad); ad.alerted_scaling = true; } // video + hook + script
   await sendDigest(comp, winners);
-  console.log(`[worker] ${comp.name}: ${newAds.length} new, ${milestones.length} milestone, ${winners.length} in digest${firstRun ? ' (seeded — no new-ad blast)' : ''}`);
+  console.log(`[worker] ${comp.name}: ${newAds.length} new, ${milestones.length} newly-scaling, ${scalingSet.length} scaling/winners${firstRun ? ' (seeded)' : ''}`);
 
   await saveAds(comp, state);
 }

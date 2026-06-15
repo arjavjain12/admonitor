@@ -45,7 +45,7 @@ jobs:
         run: |
           git config user.name "admonitor-bot"
           git config user.email "bot@admonitor.local"
-          git add data/state.json
+          git add data/state.json public/creatives 2>/dev/null || git add data/state.json
           git commit -m "state: update [skip ci]" || echo "no state change"
           git push || echo "nothing to push"
 

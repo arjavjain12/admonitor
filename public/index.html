@@ -57,7 +57,7 @@
 </header>
 <main>
   <div class="cards" id="stats"></div>
-  <p class="legend">🪝 <b>Hook</b> shown first (most important) · 🏆 <b>Winner</b>=active 30d+ · 🔥 <b>Scaling</b>=3+ variants · 🆕 <b>New</b>=seen ≤7d · 💀 <b>Killed fast</b>=ran &lt;7d then stopped. Signals inferred from longevity/variants — Meta doesn't publish spend.</p>
+  <p class="legend">🆕 <b>New</b>=&lt;8 days (link only) · 🔥 <b>Scaling</b>=8 days+ or running in multiple ad sets · 🏆 <b>Winner</b>=30 days+ · 💀 <b>Killed</b>=stopped under 8 days. Hooks &amp; archived videos are kept for scaling/winners only. Signals inferred from longevity — Meta doesn't publish spend.</p>
   <div class="row" id="filters"></div>
   <div class="grid" id="grid"></div>
 </main>
@@ -67,12 +67,11 @@ let ADS=[], active='all';
 const FILTERS=[['all','All'],['winner','🏆 Winners'],['scaling','🔥 Scaling'],['new','🆕 New'],['hasScript','🎬 Has script'],['active','Active'],['inactive','Inactive']];
 
 function daysActive(a){ const end=a.status==='active'?NOW:(a.gone_at||a.last_seen); return Math.max(0,Math.round((end-(a.started_ts||a.first_seen))/DAY)); }
-function isNew(a){ return NOW-(a.first_seen||0) < 7*DAY; }
 function bucket(a){ const d=daysActive(a);
-  if(a.status==='inactive'&&d<7) return 'killed';
-  if(a.status==='active'&&a.variants>=3) return 'scaling';
-  if(a.status==='active'&&d>=30) return 'winner';
-  return a.status==='active'?'running':'inactive'; }
+  if(a.status!=='active') return d<8?'killed':'inactive';
+  if(d>=30) return 'winner';
+  if(d>=8||a.variants>=3||a.adsets>1) return 'scaling';  // graduate to scaling at 8 days (or multi-adset/variant)
+  return 'new'; }
 function hookOf(a){
   if(a.analysis?.hook) return a.analysis.hook;            // real (spoken/opening) hook from Gemini
   // fallback: first substantive line of the ad copy, skipping Meta UI chrome + brand/handle lines
@@ -92,7 +91,7 @@ function matches(a){ const b=bucket(a);
   if(active==='all') return true;
   if(active==='active') return a.status==='active';
   if(active==='inactive') return a.status==='inactive';
-  if(active==='new') return isNew(a);
+  if(active==='new') return b==='new';
   if(active==='hasScript') return !!a.analysis?.timeline?.length;
   if(active==='winner') return b==='winner';
   if(active==='scaling') return b==='scaling';
@@ -117,11 +116,11 @@ function dedupe(list){
 
 function tags(a){ const out=[],b=bucket(a),d=daysActive(a);
   if(a.adsets>1) out.push(['adsets','📑 '+a.adsets+' ad sets']);
-  if(isNew(a)) out.push(['new','🆕 New']);
-  if(b==='winner') out.push(['winner','🏆 '+d+'d']);
-  if(b==='scaling') out.push(['scaling','🔥 '+a.variants+' variants']);
-  if(b==='killed') out.push(['killed','💀 '+d+'d']);
-  if(!out.length) out.push([a.status==='active'?'running':'killed', a.status==='active'?d+'d live':'retired']);
+  if(b==='new') out.push(['new','🆕 New · '+d+'d']);
+  else if(b==='winner') out.push(['winner','🏆 Winner · '+d+'d']);
+  else if(b==='scaling') out.push(['scaling','🔥 Scaling · '+d+'d']);
+  else if(b==='killed') out.push(['killed','💀 '+d+'d']);
+  else out.push(['running', a.status==='active'?d+'d live':'retired']);
   return out; }
 
 function scriptHtml(a){ const tl=a.analysis?.timeline; if(!tl?.length) return '';
@@ -134,7 +133,12 @@ function scriptHtml(a){ const tl=a.analysis?.timeline; if(!tl?.length) return ''
 const esc=s=>(s||'').replace(/</g,'&lt;');
 
 function mediaHtml(a){
-  if(a.media_type==='video'&&a.video_url) return `<video src="${a.video_url}" poster="${a.image_url||''}" controls preload="none" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'empty',textContent:'video expired — open on Meta'}))"></video>`;
+  // New creatives: no embedded video — poster (if any) + Meta link only.
+  if(bucket(a)==='new')
+    return a.image_url?`<img loading="lazy" src="${a.image_url}" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'empty',textContent:'🆕 new — view on Meta'}))">`:`<div class="empty">🆕 New creative — view on Meta →</div>`;
+  // Scaling/winners: prefer the archived (permanent) video, fall back to the signed URL.
+  const vsrc=a.creative_path||a.video_url;
+  if(a.media_type==='video'&&vsrc) return `<video src="${vsrc}" poster="${a.image_url||''}" controls preload="none" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'empty',textContent:'video unavailable — open on Meta'}))"></video>`;
   if(a.image_url) return `<img loading="lazy" src="${a.image_url}" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'empty',textContent:'image expired'}))">`;
   return `<div class="empty">${a.media_type==='video'?'🎬 video':'no media'}</div>`;
 }
@@ -161,8 +165,8 @@ async function load(){
   ADS=dedupe(Object.values(state).flatMap(comp=>Object.values(comp)));
   const comps=new Set(ADS.map(a=>a.competitor));
   const act=ADS.filter(a=>a.status==='active');
-  const stats=[['Active ads',act.length],['🏆 Winners',act.filter(a=>daysActive(a)>=30).length],
-    ['🔥 Scaling',act.filter(a=>a.variants>=3).length],['🆕 New (7d)',ADS.filter(isNew).length],
+  const stats=[['Active ads',act.length],['🏆 Winners',act.filter(a=>bucket(a)==='winner').length],
+    ['🔥 Scaling',act.filter(a=>bucket(a)==='scaling').length],['🆕 New',act.filter(a=>bucket(a)==='new').length],
     ['🎬 Scripts',ADS.filter(a=>a.analysis?.timeline?.length).length]];
   document.getElementById('sub').textContent=`tracking ${ADS.length} ads · ${comps.size} competitor(s)`;
   document.getElementById('stats').innerHTML=stats.map(([l,n])=>`<div class="stat"><div class="n">${n}</div><div class="l">${l}</div></div>`).join('');
