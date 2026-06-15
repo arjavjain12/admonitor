@@ -73,7 +73,20 @@ function bucket(a){ const d=daysActive(a);
   if(a.status==='active'&&a.variants>=3) return 'scaling';
   if(a.status==='active'&&d>=30) return 'winner';
   return a.status==='active'?'running':'inactive'; }
-function hookOf(a){ return a.analysis?.hook || (a.body||'').split('\n').find(l=>l.trim()) || '(no hook yet)'; }
+function hookOf(a){
+  if(a.analysis?.hook) return a.analysis.hook;            // real (spoken/opening) hook from Gemini
+  // fallback: first substantive line of the ad copy, skipping Meta UI chrome + brand/handle lines
+  const junk=/^(open ?drop-?down|see (ad|summary) details?|see summary|sponsored|active|inactive|platforms|menu|this ad has)/i;
+  const brand=(a.competitor||'').toLowerCase();
+  const line=(a.body||'').split('\n').map(s=>s.trim()).filter(Boolean).find(l=>{
+    const ll=l.toLowerCase();
+    if(junk.test(l)||ll===brand) return false;
+    if(/\bwith .*shop$/i.test(l)) return false;            // "<creator> with <Brand>" credit
+    if(/^[a-z0-9_.]{1,20}$/i.test(l)) return false;        // bare handle
+    return l.length>3;
+  });
+  return line || '⚠ video hook — run analysis to extract it';
+}
 
 function matches(a){ const b=bucket(a);
   if(active==='all') return true;

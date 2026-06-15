@@ -37,7 +37,7 @@ export function extractCards() {
     const body = t
       .replace(/Library ID:\s*\d+/g, '')
       .replace(/Started running on[^\n]*/g, '')
-      .replace(/^(Active|Inactive|Sponsored|Platforms|Menu|See ad details|Open Drop-down|This ad has.*|​)$/gim, '')
+      .replace(/^(Active|Inactive|Sponsored|Platforms|Menu|See ad details|See summary details|Open ?Drop-?down|This ad has.*|​)$/gim, '')
       .replace(/\n{2,}/g, '\n').trim().slice(0, 1200);
 
     const cta = ['Shop now', 'Shop Now', 'Learn more', 'Learn More', 'Sign up', 'Order now',
