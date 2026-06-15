@@ -34,6 +34,7 @@
   .t-new{background:rgba(167,139,250,.18);color:var(--new)}
   .t-killed{background:rgba(248,113,113,.16);color:var(--kill)}
   .t-running{background:#222a39;color:var(--mut)}
+  .t-adsets{background:rgba(110,168,255,.16);color:var(--acc)}
   .hook{background:rgba(245,158,11,.10);border-left:3px solid var(--hook);padding:8px 10px;border-radius:6px}
   .hook .lbl{font-size:10px;letter-spacing:.1em;color:var(--hook);font-weight:800}
   .hook .txt{font-size:14px;font-weight:600;margin-top:1px}
@@ -84,7 +85,25 @@ function matches(a){ const b=bucket(a);
   if(active==='scaling') return b==='scaling';
   return true; }
 
+// Collapse identical creatives (same video/copy run across multiple ad sets) into one card.
+function dedupe(list){
+  const key=a=>a.media_type+'|'+((a.body||'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim().slice(0,140)||a.library_id);
+  const groups={};
+  for(const a of list){ (groups[key(a)] ??= []).push(a); }
+  return Object.values(groups).map(g=>{
+    g.sort((x,y)=>(y.analysis?1:0)-(x.analysis?1:0) || (x.started_ts||x.first_seen)-(y.started_ts||y.first_seen));
+    const rep={...g[0]};
+    rep.adsets=g.length;                                              // how many ad sets/campaigns run this creative
+    rep.started_ts=Math.min(...g.map(x=>x.started_ts||x.first_seen)); // earliest = longest it's been live
+    rep.first_seen=Math.min(...g.map(x=>x.first_seen));
+    rep.variants=Math.max(...g.map(x=>x.variants||1));
+    rep.status=g.some(x=>x.status==='active')?'active':'inactive';
+    return rep;
+  });
+}
+
 function tags(a){ const out=[],b=bucket(a),d=daysActive(a);
+  if(a.adsets>1) out.push(['adsets','📑 '+a.adsets+' ad sets']);
   if(isNew(a)) out.push(['new','🆕 New']);
   if(b==='winner') out.push(['winner','🏆 '+d+'d']);
   if(b==='scaling') out.push(['scaling','🔥 '+a.variants+' variants']);
@@ -126,7 +145,7 @@ function render(){
 async function load(){
   let state={};
   try{ state=await fetch('./state.json?t='+NOW).then(r=>r.json()); }catch(e){ document.getElementById('sub').textContent='could not load state.json'; return; }
-  ADS=Object.values(state).flatMap(comp=>Object.values(comp));
+  ADS=dedupe(Object.values(state).flatMap(comp=>Object.values(comp)));
   const comps=new Set(ADS.map(a=>a.competitor));
   const act=ADS.filter(a=>a.status==='active');
   const stats=[['Active ads',act.length],['🏆 Winners',act.filter(a=>daysActive(a)>=30).length],
