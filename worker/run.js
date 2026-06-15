@@ -8,7 +8,7 @@ import { scrapeCompetitor, parseStarted } from '../src/scraper.js';
 import { analyzeVideoBuffer, SCRIPT_PROMPT } from '../src/video.js';
 import { loadAds, saveAds } from '../src/filestate.js';
 import { sendNewAd, sendScaling, sendDigest } from '../src/notify.js';
-import { COMPETITORS, DIGEST_TOP_N, MAX_ANALYSES_PER_RUN, SCALING_DAYS, WINNER_DAYS } from '../src/config.js';
+import { COMPETITORS, DIGEST_TOP_N, MAX_ANALYSES_PER_RUN, ARCHIVE_TOP_N, SCALING_DAYS, WINNER_DAYS } from '../src/config.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const CREATIVE_DIR = path.join(__dirname, '..', 'public', 'creatives');
@@ -75,9 +75,14 @@ async function runCompetitor(comp, now, budget) {
     if (!seenNow.has(id) && state[id].status === 'active') { state[id].status = 'inactive'; state[id].gone_at = now; }
   }
 
-  // Scaling/winners: analyze hook + archive video (cached, budget-capped). New ads get nothing heavy.
+  // Scaling/winners: analyze hook (budget-capped) + archive video for the top N (repo-size guard). New ads get nothing heavy.
   const scalingSet = Object.values(state).filter(r => isScaling(r, now)).sort((a, b) => score(b, now) - score(a, now));
-  for (const r of scalingSet) { r.daysActive = daysActive(r, now); await ensureAnalysis(r, budget); await archiveVideo(r); }
+  const archiveIds = new Set(scalingSet.slice(0, ARCHIVE_TOP_N).map(r => r.library_id));
+  for (const r of scalingSet) {
+    r.daysActive = daysActive(r, now);
+    await ensureAnalysis(r, budget);
+    if (archiveIds.has(r.library_id)) await archiveVideo(r);
+  }
 
   // Just crossed the 8-day line → "now scaling" alert (once).
   const milestones = scalingSet.filter(r => !r.alerted_scaling && daysActive(r, now) >= SCALING_DAYS);
