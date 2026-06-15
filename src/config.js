@@ -1,7 +1,7 @@
 // Competitors to track. page_id = exact page coverage (preferred); query is a fallback label.
 export const COMPETITORS = [
   { name: 'Invogue Shop',        page_id: '114250088213898', query: 'invogueshop', country: 'IN' },
-  { name: 'Krvvy',               page_id: '536086762923254', query: 'staykrvvy',   country: 'IN' },
+  { name: 'Krvvy',                                           query: 'staykrvvy',   country: 'IN' }, // branded-content only — keyword, not page_id
   { name: 'Underneat',           page_id: '499374739933459', query: 'underneat',   country: 'IN' },
   { name: 'Shapercult.Official', page_id: '392138857305657', query: 'shapercult',  country: 'IN' },
 ];
