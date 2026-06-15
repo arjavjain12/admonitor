@@ -48,3 +48,12 @@ jobs:
           git add data/state.json
           git commit -m "state: update [skip ci]" || echo "no state change"
           git push || echo "nothing to push"
+
+      - name: Deploy dashboard to Netlify
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
+        run: |
+          cp data/state.json public/state.json
+          npx -y netlify-cli@latest deploy --prod --dir=public \
+            --site="$NETLIFY_SITE_ID" --auth="$NETLIFY_AUTH_TOKEN"

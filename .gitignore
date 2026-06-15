@@ -12,3 +12,4 @@ creative_*.jpg
 .netlify
 winners/
 admonitor-dashboard.png
+.DS_Store

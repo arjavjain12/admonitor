@@ -5,36 +5,45 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>AdMonitor — competitor ad radar</title>
 <style>
-  :root{--bg:#0b0d12;--panel:#151922;--panel2:#1c2230;--line:#262d3d;--ink:#e7ecf3;--mut:#8a94a6;--acc:#6ea8ff;--win:#34d399;--scale:#fbbf24;--kill:#f87171;--new:#a78bfa}
+  :root{--bg:#0b0d12;--panel:#151922;--panel2:#1c2230;--line:#262d3d;--ink:#e7ecf3;--mut:#8a94a6;--acc:#6ea8ff;--win:#34d399;--scale:#fbbf24;--kill:#f87171;--new:#a78bfa;--hook:#f59e0b}
   *{box-sizing:border-box}
   body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.5 system-ui,-apple-system,Segoe UI,Roboto}
-  header{padding:20px 28px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:14px}
-  header h1{font-size:18px;margin:0;font-weight:650}
+  header{padding:18px 28px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:14px;position:sticky;top:0;background:rgba(11,13,18,.92);backdrop-filter:blur(8px);z-index:5}
+  header h1{font-size:18px;margin:0;font-weight:680;letter-spacing:-.01em}
   header .dot{width:9px;height:9px;border-radius:50%;background:var(--win);box-shadow:0 0 10px var(--win)}
   .mut{color:var(--mut)}
-  main{padding:24px 28px;max-width:1200px;margin:auto}
-  .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:24px}
-  .stat{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px}
-  .stat .n{font-size:26px;font-weight:700}
+  main{padding:24px 28px;max-width:1280px;margin:auto}
+  .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:22px}
+  .stat{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:15px}
+  .stat .n{font-size:25px;font-weight:750}
   .stat .l{color:var(--mut);font-size:12px;margin-top:2px}
-  .row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px}
+  .row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px;align-items:center}
   .chip{background:var(--panel2);border:1px solid var(--line);color:var(--ink);padding:7px 13px;border-radius:999px;cursor:pointer;font-size:13px}
   .chip.on{background:var(--acc);border-color:var(--acc);color:#06101f;font-weight:600}
-  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px}
   .ad{background:var(--panel);border:1px solid var(--line);border-radius:14px;overflow:hidden;display:flex;flex-direction:column}
-  .ad img{width:100%;height:200px;object-fit:cover;background:#222}
-  .ad .b{padding:12px;display:flex;flex-direction:column;gap:8px;flex:1}
-  .ad .body{font-size:13px;color:#cdd5e1;max-height:84px;overflow:hidden}
-  .tags{display:flex;gap:6px;flex-wrap:wrap}
-  .tag{font-size:11px;padding:3px 8px;border-radius:6px;font-weight:600}
-  .t-winner{background:rgba(52,211,153,.15);color:var(--win)}
-  .t-scaling{background:rgba(251,191,36,.15);color:var(--scale)}
-  .t-new{background:rgba(167,139,250,.16);color:var(--new)}
-  .t-killed_fast{background:rgba(248,113,113,.15);color:var(--kill)}
-  .t-running,.t-retired{background:#222a39;color:var(--mut)}
-  .ad .meta{font-size:12px;color:var(--mut);display:flex;justify-content:space-between;margin-top:auto}
-  .ad a{color:var(--acc);text-decoration:none;font-size:12px}
-  .legend{font-size:12px;color:var(--mut);margin:0 0 18px}
+  .media{position:relative;background:#0f131b;aspect-ratio:1/1;overflow:hidden}
+  .media img,.media video{width:100%;height:100%;object-fit:cover;display:block}
+  .badges{position:absolute;top:8px;left:8px;display:flex;gap:6px;flex-wrap:wrap}
+  .b{padding:13px;display:flex;flex-direction:column;gap:10px;flex:1}
+  .tag{font-size:11px;padding:3px 8px;border-radius:6px;font-weight:700}
+  .t-winner{background:rgba(52,211,153,.16);color:var(--win)}
+  .t-scaling{background:rgba(251,191,36,.16);color:var(--scale)}
+  .t-new{background:rgba(167,139,250,.18);color:var(--new)}
+  .t-killed{background:rgba(248,113,113,.16);color:var(--kill)}
+  .t-running{background:#222a39;color:var(--mut)}
+  .hook{background:rgba(245,158,11,.10);border-left:3px solid var(--hook);padding:8px 10px;border-radius:6px}
+  .hook .lbl{font-size:10px;letter-spacing:.1em;color:var(--hook);font-weight:800}
+  .hook .txt{font-size:14px;font-weight:600;margin-top:1px}
+  .meta{font-size:12px;color:var(--mut);display:flex;justify-content:space-between;gap:8px;margin-top:auto}
+  .meta a{color:var(--acc);text-decoration:none}
+  details summary{cursor:pointer;font-size:12px;color:var(--acc);user-select:none}
+  .script{font-size:12px;margin-top:8px;border-top:1px solid var(--line);padding-top:8px;max-height:260px;overflow:auto}
+  .seg{margin-bottom:7px}
+  .seg .t{color:var(--mut)}
+  .vo{color:#d7def0}.ost{color:#cfe3ff}.vis{color:#8b93a4}
+  .legend{font-size:12px;color:var(--mut);margin:0 0 16px}
+  .empty{color:var(--mut);padding:40px;text-align:center}
 </style>
 </head>
 <body>
@@ -45,75 +54,88 @@
 </header>
 <main>
   <div class="cards" id="stats"></div>
-  <p class="legend">🏆 <b>Winner</b> = active 30+ days · 🔥 <b>Scaling</b> = 3+ live variants · 🆕 <b>New</b> = first seen ≤7d · 💀 <b>Killed fast</b> = ran &lt;7d then stopped. (Inferred from longevity/variants — Meta doesn't publish spend for commercial ads.)</p>
+  <p class="legend">🪝 <b>Hook</b> shown first (most important) · 🏆 <b>Winner</b>=active 30d+ · 🔥 <b>Scaling</b>=3+ variants · 🆕 <b>New</b>=seen ≤7d · 💀 <b>Killed fast</b>=ran &lt;7d then stopped. Signals inferred from longevity/variants — Meta doesn't publish spend.</p>
   <div class="row" id="filters"></div>
   <div class="grid" id="grid"></div>
 </main>
 <script>
-const FILTERS = [
-  ['all','All'],['winner','🏆 Winners'],['scaling','🔥 Scaling'],
-  ['new','🆕 New (7d)'],['killed_fast','💀 Killed fast'],['active','Active'],['inactive','Inactive']
-];
-let ADS = [], active = 'all';
+const DAY=86400000, NOW=Date.now();
+let ADS=[], active='all';
+const FILTERS=[['all','All'],['winner','🏆 Winners'],['scaling','🔥 Scaling'],['new','🆕 New'],['hasScript','🎬 Has script'],['active','Active'],['inactive','Inactive']];
 
-function isNew(a){ return Date.now() - a.first_seen < 7*86400000; }
+function daysActive(a){ const end=a.status==='active'?NOW:(a.gone_at||a.last_seen); return Math.max(0,Math.round((end-(a.started_ts||a.first_seen))/DAY)); }
+function isNew(a){ return NOW-(a.first_seen||0) < 7*DAY; }
+function bucket(a){ const d=daysActive(a);
+  if(a.status==='inactive'&&d<7) return 'killed';
+  if(a.status==='active'&&a.variants>=3) return 'scaling';
+  if(a.status==='active'&&d>=30) return 'winner';
+  return a.status==='active'?'running':'inactive'; }
+function hookOf(a){ return a.analysis?.hook || (a.body||'').split('\n').find(l=>l.trim()) || '(no hook yet)'; }
 
-function matches(a){
-  if (active==='all') return true;
-  if (active==='active') return a.status==='active';
-  if (active==='inactive') return a.status==='inactive';
-  if (active==='new') return isNew(a);
-  return a.bucket===active;
-}
+function matches(a){ const b=bucket(a);
+  if(active==='all') return true;
+  if(active==='active') return a.status==='active';
+  if(active==='inactive') return a.status==='inactive';
+  if(active==='new') return isNew(a);
+  if(active==='hasScript') return !!a.analysis?.timeline?.length;
+  if(active==='winner') return b==='winner';
+  if(active==='scaling') return b==='scaling';
+  return true; }
 
-function tagFor(a){
-  const tags=[];
-  if (isNew(a)) tags.push(['new','🆕 New']);
-  if (a.bucket==='winner') tags.push(['winner','🏆 '+a.daysActive+'d']);
-  if (a.bucket==='scaling') tags.push(['scaling','🔥 '+a.variants+' variants']);
-  if (a.bucket==='killed_fast') tags.push(['killed_fast','💀 '+a.daysActive+'d']);
-  if (!tags.length) tags.push([a.bucket, a.status==='active'? a.daysActive+'d live':'retired']);
-  return tags;
+function tags(a){ const out=[],b=bucket(a),d=daysActive(a);
+  if(isNew(a)) out.push(['new','🆕 New']);
+  if(b==='winner') out.push(['winner','🏆 '+d+'d']);
+  if(b==='scaling') out.push(['scaling','🔥 '+a.variants+' variants']);
+  if(b==='killed') out.push(['killed','💀 '+d+'d']);
+  if(!out.length) out.push([a.status==='active'?'running':'killed', a.status==='active'?d+'d live':'retired']);
+  return out; }
+
+function scriptHtml(a){ const tl=a.analysis?.timeline; if(!tl?.length) return '';
+  const segs=tl.map(s=>`<div class="seg"><span class="t">[${s.t||''}]</span> `+
+    (s.voiceover_verbatim?`<span class="vo">🗣 "${esc(s.voiceover_verbatim)}"</span> `:'')+
+    (s.onscreen_text_verbatim?`<span class="ost">🔤 ${esc(s.onscreen_text_verbatim)}</span> `:'')+
+    `<span class="vis">🎬 ${esc(s.visual||'')}</span></div>`).join('');
+  return `<details><summary>🎬 Full script & visuals (${tl.length})</summary><div class="script">${segs}</div></details>`; }
+
+const esc=s=>(s||'').replace(/</g,'&lt;');
+
+function mediaHtml(a){
+  if(a.media_type==='video'&&a.video_url) return `<video src="${a.video_url}" poster="${a.image_url||''}" controls preload="none" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'empty',textContent:'video expired — open on Meta'}))"></video>`;
+  if(a.image_url) return `<img loading="lazy" src="${a.image_url}" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'empty',textContent:'image expired'}))">`;
+  return `<div class="empty">${a.media_type==='video'?'🎬 video':'no media'}</div>`;
 }
 
 function render(){
-  const grid = document.getElementById('grid');
-  const list = ADS.filter(matches);
-  grid.innerHTML = list.map(a=>`
-    <div class="ad">
-      ${(a.creative_path||a.image_url)?`<img loading="lazy" src="${a.creative_path||a.image_url}" ${a.image_url?`onerror="this.onerror=null;this.src='${a.image_url}'"`:''}>${a.media_type==='video'?'<span class="tag t-running" style="position:absolute;margin:8px">▶ video</span>':''}`:''}
-      <div class="b">
-        <div class="tags">${tagFor(a).map(([k,l])=>`<span class="tag t-${k}">${l}</span>`).join('')}</div>
-        <div class="body">${(a.body||'').replace(/</g,'&lt;').slice(0,200)||'<span class=mut>(no text)</span>'}</div>
-        <div class="meta">
-          <span>${a.competitor} · ${a.started_on||''}</span>
-          <a href="https://www.facebook.com/ads/library/?id=${a.library_id}" target="_blank">Meta →</a>
-        </div>
-      </div>
-    </div>`).join('') || '<p class="mut">No ads in this view yet. Run <code>npm run poll</code>.</p>';
+  const g=document.getElementById('grid');
+  const list=ADS.filter(matches).sort((x,y)=>daysActive(y)+y.variants*5-(daysActive(x)+x.variants*5));
+  if(!list.length){ g.innerHTML='<p class="empty">No ads in this view.</p>'; return; }
+  g.innerHTML=list.map(a=>`<div class="ad">
+    <div class="media">${mediaHtml(a)}<div class="badges">${tags(a).map(([k,l])=>`<span class="tag t-${k}">${l}</span>`).join('')}</div></div>
+    <div class="b">
+      <div class="hook"><div class="lbl">🪝 HOOK</div><div class="txt">"${esc(hookOf(a))}"</div></div>
+      ${a.analysis?.summary?`<div class="mut" style="font-size:12px">${esc(a.analysis.summary)}</div>`:''}
+      ${scriptHtml(a)}
+      <div class="meta"><span>${esc(a.competitor)} · ${esc(a.started_on)||'—'} · ${a.variants} var</span>
+      <a href="https://www.facebook.com/ads/library/?id=${a.library_id}" target="_blank">Meta →</a></div>
+    </div></div>`).join('');
 }
 
 async function load(){
-  const [ads, ins] = await Promise.all([
-    fetch('/api/ads').then(r=>r.json()),
-    fetch('/api/insights').then(r=>r.json())
-  ]);
-  ADS = ads;
-  const t = ins.totals;
-  document.getElementById('sub').textContent =
-    `tracking ${t.tracked} ads across ${ins.byCompetitor.length} competitor(s)`;
-  document.getElementById('stats').innerHTML = [
-    ['Active ads',t.active],['🏆 Likely winners',t.winners],['🔥 Scaling',t.scaling],
-    ['🆕 New this week',t.newThisWeek],['💀 Killed fast',t.killedFast]
-  ].map(([l,n])=>`<div class="stat"><div class="n">${n}</div><div class="l">${l}</div></div>`).join('');
-  document.getElementById('filters').innerHTML = FILTERS.map(([k,l])=>
-    `<span class="chip ${k===active?'on':''}" data-k="${k}">${l}</span>`).join('');
-  document.querySelectorAll('.chip').forEach(c=>c.onclick=()=>{active=c.dataset.k;
-    document.querySelectorAll('.chip').forEach(x=>x.classList.toggle('on',x===c));render();});
+  let state={};
+  try{ state=await fetch('./state.json?t='+NOW).then(r=>r.json()); }catch(e){ document.getElementById('sub').textContent='could not load state.json'; return; }
+  ADS=Object.values(state).flatMap(comp=>Object.values(comp));
+  const comps=new Set(ADS.map(a=>a.competitor));
+  const act=ADS.filter(a=>a.status==='active');
+  const stats=[['Active ads',act.length],['🏆 Winners',act.filter(a=>daysActive(a)>=30).length],
+    ['🔥 Scaling',act.filter(a=>a.variants>=3).length],['🆕 New (7d)',ADS.filter(isNew).length],
+    ['🎬 Scripts',ADS.filter(a=>a.analysis?.timeline?.length).length]];
+  document.getElementById('sub').textContent=`tracking ${ADS.length} ads · ${comps.size} competitor(s)`;
+  document.getElementById('stats').innerHTML=stats.map(([l,n])=>`<div class="stat"><div class="n">${n}</div><div class="l">${l}</div></div>`).join('');
+  document.getElementById('filters').innerHTML=FILTERS.map(([k,l])=>`<span class="chip ${k===active?'on':''}" data-k="${k}">${l}</span>`).join('');
+  document.querySelectorAll('.chip').forEach(c=>c.onclick=()=>{active=c.dataset.k;document.querySelectorAll('.chip').forEach(x=>x.classList.toggle('on',x===c));render();});
   render();
 }
 load();
-setInterval(load, 60000);
 </script>
 </body>
 </html>

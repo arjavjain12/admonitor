@@ -1,17 +1,7 @@
+# AdMonitor dashboard — static site. The worker (GitHub Actions) writes public/state.json
+# and redeploys this after each daily run. No functions / no scheduled scraping here.
 [build]
-  command = "npm run build:dashboard"
   publish = "public"
-  functions = "netlify/functions"
 
 [functions]
-  node_bundler = "esbuild"
-  # Do NOT let esbuild bundle the browser — ship them as external node modules
-  # and include the Chromium binary files so executablePath() can extract them.
-  external_node_modules = ["@sparticuz/chromium", "playwright-core"]
-  included_files = ["node_modules/@sparticuz/chromium/**"]
-
-[functions."daily-alert"]
-  # Scraping + video download + Gemini needs well above the default 10s.
-  # (Scheduled functions run as background; ensure your Netlify plan allows extended duration.)
-
-# Manual trigger for testing: POST /.netlify/functions/daily-alert-run
+  directory = "netlify/_none"   # intentionally empty so no functions deploy
