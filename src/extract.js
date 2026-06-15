@@ -12,7 +12,8 @@ export function extractCards() {
     if (!id || seen.has(id)) continue;
     seen.add(id);
 
-    const started = (t.match(/Started running on ([0-9]{1,2} \w+ \d{4})/) || [])[1] || null;
+    // Date format varies by locale/IP ("16 May 2026" vs "May 16, 2026") — capture up to the year, let Date.parse handle it.
+    const started = (t.match(/Started running on ([A-Za-z0-9.,\s]+?\d{4})/) || [])[1]?.replace(/\s+/g, ' ').trim() || null;
     const variants = Number((t.match(/(\d+)\s+ads use this creative and text/i) || [])[1] || 1);
 
     // creative image: drop avatars, prefer ad-creative namespace + largest size token

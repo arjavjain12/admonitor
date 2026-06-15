@@ -51,6 +51,8 @@ async function runCompetitor(comp, now, budget) {
     } else {
       prev.last_seen = now; prev.status = 'active'; prev.variants = c.variants;
       prev.video_url = c.video_url; prev.image_url = c.image_url;
+      // backfill the start date if we missed it on an earlier run
+      if (!prev.started_ts && c.started) { prev.started_on = c.started; prev.started_ts = parseStarted(c.started); }
     }
   }
   for (const id of Object.keys(state)) {
