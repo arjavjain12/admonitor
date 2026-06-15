@@ -22,8 +22,10 @@
   .chip.on{background:var(--acc);border-color:var(--acc);color:#06101f;font-weight:600}
   .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px}
   .ad{background:var(--panel);border:1px solid var(--line);border-radius:14px;overflow:hidden;display:flex;flex-direction:column}
-  .media{position:relative;background:#0f131b;aspect-ratio:1/1;overflow:hidden}
+  .media{position:relative;background:#000;aspect-ratio:9/16;overflow:hidden}
   .media img,.media video{width:100%;height:100%;object-fit:cover;display:block}
+  .days{display:flex;align-items:center;gap:6px;font-size:13px;font-weight:650;color:var(--win)}
+  .days.dead{color:var(--mut)}
   .badges{position:absolute;top:8px;left:8px;display:flex;gap:6px;flex-wrap:wrap}
   .b{padding:13px;display:flex;flex-direction:column;gap:10px;flex:1}
   .tag{font-size:11px;padding:3px 8px;border-radius:6px;font-weight:700}
@@ -112,6 +114,7 @@ function render(){
   g.innerHTML=list.map(a=>`<div class="ad">
     <div class="media">${mediaHtml(a)}<div class="badges">${tags(a).map(([k,l])=>`<span class="tag t-${k}">${l}</span>`).join('')}</div></div>
     <div class="b">
+      <div class="days${a.status==='active'?'':' dead'}">${a.status==='active'?`📅 Running for ${daysActive(a)} day${daysActive(a)===1?'':'s'}`:`⏹ Ran ${daysActive(a)} day${daysActive(a)===1?'':'s'}`}</div>
       <div class="hook"><div class="lbl">🪝 HOOK</div><div class="txt">"${esc(hookOf(a))}"</div></div>
       ${a.analysis?.summary?`<div class="mut" style="font-size:12px">${esc(a.analysis.summary)}</div>`:''}
       ${scriptHtml(a)}
