@@ -1,0 +1,14 @@
+node_modules/
+.env
+data/*
+!data/state.json
+demo/
+creative_*.jpg
+*.jpeg
+.playwright-mcp/
+.nl_token
+
+# Local Netlify folder
+.netlify
+winners/
+admonitor-dashboard.png

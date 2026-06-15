@@ -1,0 +1,50 @@
+name: AdMonitor daily
+
+on:
+  schedule:
+    - cron: '0 9 * * *'      # daily 09:00 UTC
+  workflow_dispatch: {}        # manual "Run workflow" button for testing
+
+permissions:
+  contents: write              # to commit updated data/state.json
+
+concurrency:
+  group: admonitor-daily
+  cancel-in-progress: false
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - run: npm ci
+
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Run AdMonitor worker
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GEMINI_MODEL: ${{ secrets.GEMINI_MODEL }}
+          SMTP_HOST: ${{ secrets.SMTP_HOST }}
+          SMTP_PORT: ${{ secrets.SMTP_PORT }}
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASS: ${{ secrets.SMTP_PASS }}
+          ALERT_TO: ${{ secrets.ALERT_TO }}
+          ALERT_FROM: ${{ secrets.ALERT_FROM }}
+        run: node worker/run.js
+
+      - name: Persist state
+        run: |
+          git config user.name "admonitor-bot"
+          git config user.email "bot@admonitor.local"
+          git add data/state.json
+          git commit -m "state: update [skip ci]" || echo "no state change"
+          git push || echo "nothing to push"

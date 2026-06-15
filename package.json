@@ -1,0 +1,23 @@
+{
+  "name": "admonitor",
+  "version": "0.1.0",
+  "description": "Track competitors' Meta Ad Library ads, infer winners, and get nudged when they launch new ads.",
+  "type": "module",
+  "scripts": {
+    "poll": "node src/poll.js",
+    "serve": "node src/server.js",
+    "build:dashboard": "echo 'static dashboard in public/ — no build step'",
+    "setup": "npx playwright install chromium"
+  },
+  "dependencies": {
+    "@netlify/blobs": "^8.1.0",
+    "@netlify/functions": "^2.8.2",
+    "@sparticuz/chromium": "^131.0.0",
+    "better-sqlite3": "^11.8.1",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "nodemailer": "^6.9.16",
+    "playwright": "^1.49.1",
+    "playwright-core": "^1.49.1"
+  }
+}
