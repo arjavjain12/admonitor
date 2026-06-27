@@ -7,6 +7,8 @@ on:
 
 permissions:
   contents: write              # to commit updated data/state.json
+  pages: write                 # to publish the dashboard to GitHub Pages
+  id-token: write              # required by actions/deploy-pages
 
 concurrency:
   group: admonitor-daily
@@ -16,6 +18,9 @@ jobs:
   run:
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
 
@@ -49,11 +54,17 @@ jobs:
           git commit -m "state: update [skip ci]" || echo "no state change"
           git push || echo "nothing to push"
 
-      - name: Deploy dashboard to Netlify
-        env:
-          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
-          NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
-        run: |
-          cp data/state.json public/state.json
-          npx -y netlify-cli@latest deploy --prod --dir=public \
-            --site="$NETLIFY_SITE_ID" --auth="$NETLIFY_AUTH_TOKEN"
+      - name: Stage state into the published dir
+        run: cp data/state.json public/state.json
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: public
+
+      - name: Deploy dashboard to GitHub Pages
+        id: deploy
+        uses: actions/deploy-pages@v4

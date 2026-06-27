@@ -137,7 +137,9 @@ function mediaHtml(a){
   if(bucket(a)==='new')
     return a.image_url?`<img loading="lazy" src="${a.image_url}" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'empty',textContent:'🆕 new — view on Meta'}))">`:`<div class="empty">🆕 New creative — view on Meta →</div>`;
   // Scaling/winners: prefer the archived (permanent) video, fall back to the signed URL.
-  const vsrc=a.creative_path||a.video_url;
+  // creative_path is stored root-absolute (/creatives/..); strip the leading slash so it
+  // resolves under the GitHub Pages project subpath (/admonitor/). video_url is a full URL — leave it.
+  const vsrc=a.creative_path?a.creative_path.replace(/^\//,''):a.video_url;
   if(a.media_type==='video'&&vsrc) return `<video src="${vsrc}" poster="${a.image_url||''}" controls preload="none" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'empty',textContent:'video unavailable — open on Meta'}))"></video>`;
   if(a.image_url) return `<img loading="lazy" src="${a.image_url}" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'empty',textContent:'image expired'}))">`;
   return `<div class="empty">${a.media_type==='video'?'🎬 video':'no media'}</div>`;
